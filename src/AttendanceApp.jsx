@@ -780,7 +780,7 @@ const AttendanceApp = () => {
                 : "Create Account"}
             </button>
           </div>
-          <div style={styles.switchMode}>
+          {/* <div style={styles.switchMode}>
             {authMode === "login" ? (
               <span>
                 Don't have an account?
@@ -820,7 +820,7 @@ const AttendanceApp = () => {
                 </span>
               </span>
             )}
-          </div>
+          </div> */}
         </div>
       </div>
     );
