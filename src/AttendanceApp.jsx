@@ -11,6 +11,7 @@ import {
   Mail,
   Lock,
   Download,
+  Search,
 } from "lucide-react";
 import * as XLSX from 'xlsx';
 
@@ -52,6 +53,9 @@ const AttendanceApp = () => {
     key: "totalHours",
     direction: "descending",
   });
+
+  // New state for search functionality
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const unsubscribe = onAuthChange((user) => {
@@ -225,14 +229,16 @@ const AttendanceApp = () => {
 
   // Excel download functionality
   const downloadExcel = () => {
-    if (students.length === 0) {
+    const dataToDownload = searchTerm ? filteredStudents : students;
+    
+    if (dataToDownload.length === 0) {
       showNotification("No data to download", "error");
       return;
     }
 
     try {
       // Prepare data for Excel
-      const excelData = students.map((student, index) => ({
+      const excelData = dataToDownload.map((student, index) => ({
         'S.No': index + 1,
         'Student Name': student.name,
         'Class': student.class,
@@ -258,9 +264,18 @@ const AttendanceApp = () => {
     }
   };
 
-  // Memoized sorting of students
+  // Filter students based on search term
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm) return students;
+    
+    return students.filter(student =>
+      student.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [students, searchTerm]);
+
+  // Memoized sorting of students (now applied to filtered students)
   const sortedStudents = useMemo(() => {
-    let sortableStudents = [...students];
+    let sortableStudents = [...filteredStudents];
     if (sortConfig.key !== null) {
       sortableStudents.sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) {
@@ -273,7 +288,7 @@ const AttendanceApp = () => {
       });
     }
     return sortableStudents;
-  }, [students, sortConfig]);
+  }, [filteredStudents, sortConfig]);
 
   // Function to handle the sorting request
   const requestSort = (key) => {
@@ -289,10 +304,20 @@ const AttendanceApp = () => {
     setSortConfig({ key, direction });
   };
 
+  // Handle search input change
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  // Clear search
+  const clearSearch = () => {
+    setSearchTerm("");
+  };
+
   const styles = {
     container: {
       minHeight: "100vh",
-      background: "linear-gradient(125deg, #ffffffff 0%, #000080 100%)",
+      backgroundColor: "#d5d6d7ff",
       padding: "20px",
       fontFamily:
         '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
@@ -562,6 +587,33 @@ const AttendanceApp = () => {
       alignItems: 'center',
       gap: '12px',
     },
+    searchContainer: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+    },
+    searchInput: {
+      padding: '8px 12px 8px 36px',
+      border: '1px solid #d1d5db',
+      borderRadius: '6px',
+      fontSize: '14px',
+      outline: 'none',
+      width: '250px',
+    },
+    searchIcon: {
+      position: 'absolute',
+      left: '10px',
+      color: '#6b7280',
+    },
+    clearButton: {
+      backgroundColor: '#6b7280',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      padding: '4px 8px',
+      fontSize: '12px',
+      cursor: 'pointer',
+    },
     table: {
       width: "100%",
       borderCollapse: "collapse",
@@ -662,6 +714,11 @@ const AttendanceApp = () => {
       fontSize: "18px",
       color: "white",
       fontWeight: "500",
+    },
+    searchWrapper: {
+      position: 'relative',
+      display: 'flex',
+      alignItems: 'center',
     },
   };
 
@@ -780,47 +837,6 @@ const AttendanceApp = () => {
                 : "Create Account"}
             </button>
           </div>
-          {/* <div style={styles.switchMode}>
-            {authMode === "login" ? (
-              <span>
-                Don't have an account?
-                <span
-                  style={styles.switchLink}
-                  onClick={() => {
-                    setAuthMode("register");
-                    setAuthError("");
-                    setAuthData({
-                      email: "",
-                      password: "",
-                      confirmPassword: "",
-                      displayName: "",
-                    });
-                  }}
-                >
-                  Sign up here
-                </span>
-              </span>
-            ) : (
-              <span>
-                Already have an account?
-                <span
-                  style={styles.switchLink}
-                  onClick={() => {
-                    setAuthMode("login");
-                    setAuthError("");
-                    setAuthData({
-                      email: "",
-                      password: "",
-                      confirmPassword: "",
-                      displayName: "",
-                    });
-                  }}
-                >
-                  Sign in here
-                </span>
-              </span>
-            )}
-          </div> */}
         </div>
       </div>
     );
@@ -919,10 +935,32 @@ const AttendanceApp = () => {
           <div style={styles.tableContainer}>
             <div style={styles.tableHeaderContainer}>
               <h2 style={styles.tableTitle}>
-                Student Details ({students.length})
+                Student Details ({sortedStudents.length}
+                {searchTerm && ` of ${students.length}`})
               </h2>
               {students.length > 0 && (
                 <div style={styles.headerActions}>
+                  {/* Search Input */}
+                  <div style={styles.searchWrapper}>
+                    <Search size={18} style={styles.searchIcon} />
+                    <input
+                      type="text"
+                      placeholder="Search by name..."
+                      value={searchTerm}
+                      onChange={handleSearchChange}
+                      style={styles.searchInput}
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={clearSearch}
+                        style={styles.clearButton}
+                        title="Clear search"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  
                   <button 
                     style={styles.downloadButton} 
                     onClick={downloadExcel}
@@ -948,6 +986,33 @@ const AttendanceApp = () => {
                 <p style={{ fontSize: "16px", color: "#9ca3af" }}>
                   Add your first student using the form above
                 </p>
+              </div>
+            ) : sortedStudents.length === 0 && searchTerm ? (
+              <div style={styles.emptyState}>
+                <Search size={64} color="#d1d5db" />
+                <p
+                  style={{
+                    fontSize: "20px",
+                    marginBottom: "8px",
+                    fontWeight: "600",
+                  }}
+                >
+                  No students found
+                </p>
+                <p style={{ fontSize: "16px", color: "#9ca3af" }}>
+                  No students match your search for "{searchTerm}"
+                </p>
+                <button
+                  onClick={clearSearch}
+                  style={{
+                    ...styles.button,
+                    marginTop: '16px',
+                    width: 'auto',
+                    padding: '8px 16px',
+                  }}
+                >
+                  Clear Search
+                </button>
               </div>
             ) : (
               <table style={styles.table}>
