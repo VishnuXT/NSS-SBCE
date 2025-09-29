@@ -12,6 +12,7 @@ import {
   Lock,
   Download,
   Search,
+  Trash2, // Add this import
 } from "lucide-react";
 import * as XLSX from 'xlsx';
 
@@ -24,6 +25,7 @@ import {
   addStudentToFirebase,
   getStudentsFromFirebase,
   updateStudentHours as updateStudentHoursFirebase,
+  deleteStudentFromFirebase, // Add this import
 } from "./firebase/firebase.js";
 
 const AttendanceApp = () => {
@@ -47,6 +49,7 @@ const AttendanceApp = () => {
   });
   const [hoursInput, setHoursInput] = useState({});
   const [notification, setNotification] = useState({ message: "", type: "" });
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // For delete confirmation
 
   // New state for sorting configuration
   const [sortConfig, setSortConfig] = useState({
@@ -211,7 +214,7 @@ const AttendanceApp = () => {
     const student = students.find((s) => s.id === studentId);
     const newTotalHours = (student.totalHours || 0) + addedHours;
 
-    const result = await updateStudentHoursFirebase(studentId, addedHours); // backend should add hours
+    const result = await updateStudentHoursFirebase(studentId, addedHours);
     if (result.success) {
       const updatedStudents = students.map((s) =>
         s.id === studentId ? { ...s, totalHours: newTotalHours } : s
@@ -225,6 +228,28 @@ const AttendanceApp = () => {
     } else {
       showNotification(result.error, "error");
     }
+  };
+
+  // Delete student function
+  const deleteStudent = async (studentId) => {
+    const result = await deleteStudentFromFirebase(studentId);
+    if (result.success) {
+      setStudents(prev => prev.filter(student => student.id !== studentId));
+      setDeleteConfirm(null);
+      showNotification(result.message, "success");
+    } else {
+      showNotification(result.error, "error");
+    }
+  };
+
+  // Confirm delete function
+  const confirmDelete = (student) => {
+    setDeleteConfirm(student);
+  };
+
+  // Cancel delete function
+  const cancelDelete = () => {
+    setDeleteConfirm(null);
   };
 
   // Excel download functionality
@@ -701,6 +726,20 @@ const AttendanceApp = () => {
       backgroundColor: "#9ca3af",
       cursor: "not-allowed",
     },
+    deleteButton: {
+      backgroundColor: "#ef4444",
+      color: "white",
+      padding: "6px 12px",
+      border: "none",
+      borderRadius: "6px",
+      fontSize: "12px",
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      gap: "4px",
+      fontWeight: "500",
+      marginLeft: "8px",
+    },
     emptyState: {
       padding: "60px",
       textAlign: "center",
@@ -719,6 +758,63 @@ const AttendanceApp = () => {
       position: 'relative',
       display: 'flex',
       alignItems: 'center',
+    },
+    // Modal styles for delete confirmation
+    modalOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000,
+    },
+    modalContent: {
+      backgroundColor: 'white',
+      padding: '24px',
+      borderRadius: '12px',
+      maxWidth: '400px',
+      width: '90%',
+      textAlign: 'center',
+    },
+    modalTitle: {
+      fontSize: '20px',
+      fontWeight: '600',
+      marginBottom: '12px',
+      color: '#1f2937',
+    },
+    modalMessage: {
+      fontSize: '16px',
+      color: '#6b7280',
+      marginBottom: '20px',
+    },
+    modalActions: {
+      display: 'flex',
+      gap: '12px',
+      justifyContent: 'center',
+    },
+    cancelButton: {
+      backgroundColor: '#6b7280',
+      color: 'white',
+      padding: '10px 20px',
+      border: 'none',
+      borderRadius: '6px',
+      cursor: 'pointer',
+      fontSize: '14px',
+      fontWeight: '500',
+    },
+    confirmDeleteButton: {
+      backgroundColor: '#ef4444',
+      color: 'white',
+      padding: '10px 20px',
+      border: 'none',
+      borderRadius: '6px',
+      cursor: 'pointer',
+      fontSize: '14px',
+      fontWeight: '500',
     },
   };
 
@@ -856,6 +952,31 @@ const AttendanceApp = () => {
           {notification.message}
         </div>
       )}
+      
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <h3 style={styles.modalTitle}>Confirm Delete</h3>
+            <p style={styles.modalMessage}>
+              Are you sure you want to delete <strong>{deleteConfirm.name}</strong>? 
+              This action cannot be undone.
+            </p>
+            <div style={styles.modalActions}>
+              <button style={styles.cancelButton} onClick={cancelDelete}>
+                Cancel
+              </button>
+              <button 
+                style={styles.confirmDeleteButton} 
+                onClick={() => deleteStudent(deleteConfirm.id)}
+              >
+                Delete Student
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={styles.mainWrapper}>
         <div style={styles.card}>
           <div style={styles.userInfo}>
@@ -1034,6 +1155,7 @@ const AttendanceApp = () => {
                       )}
                     </th>
                     <th style={styles.th}>Update Hours</th>
+                    <th style={styles.th}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1089,6 +1211,15 @@ const AttendanceApp = () => {
                             <Save size={14} /> Save
                           </button>
                         </div>
+                      </td>
+                      <td style={styles.td}>
+                        <button
+                          onClick={() => confirmDelete(student)}
+                          style={styles.deleteButton}
+                          title="Delete student"
+                        >
+                          <Trash2 size={14} /> Delete
+                        </button>
                       </td>
                     </tr>
                   ))}

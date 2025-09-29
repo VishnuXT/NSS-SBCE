@@ -18,6 +18,7 @@ import {
   query,
   orderBy,
   getDoc,
+  deleteDoc, // Add this import
 } from "firebase/firestore";
 
 // Your Firebase configuration - Replace with your actual config
@@ -200,6 +201,25 @@ export const updateStudentHours = async (studentId, addedHours) => {
     return { success: true, message: "Student hours updated successfully!" };
   } catch (error) {
     console.error("Error updating student hours:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Add this delete function
+export const deleteStudentFromFirebase = async (studentId) => {
+  try {
+    const studentRef = doc(db, "students", studentId);
+    const studentSnap = await getDoc(studentRef);
+
+    if (!studentSnap.exists()) {
+      throw new Error("Student not found");
+    }
+
+    await deleteDoc(studentRef);
+
+    return { success: true, message: "Student deleted successfully!" };
+  } catch (error) {
+    console.error("Error deleting student:", error);
     return { success: false, error: error.message };
   }
 };
